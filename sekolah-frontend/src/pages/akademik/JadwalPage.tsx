@@ -201,59 +201,70 @@ export default function JadwalPage() {
                             <div className="p-4 text-center text-gray-500">Loading jadwal...</div>
                         ) : jadwalList && jadwalList.length > 0 ? (
                             <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Hari
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Waktu
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Mata Pelajaran
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Guru
-                                            </th>
-                                            {isAdmin && (
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Aksi
-                                                </th>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {jadwalList.map((j: any) => (
-                                            <tr key={j.id}>
-                                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                                                    {j.hari}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {j.jam_mulai} - {j.jam_selesai}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {j.pengampu_mapel?.mapel?.nama_mapel}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {j.pengampu_mapel?.guru?.nama_lengkap}
-                                                </td>
-                                                {isAdmin && (
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                        <button
-                                                            onClick={() => handleDelete(j.id)}
-                                                            disabled={isDeleting}
-                                                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                                                            title="Hapus Jadwal"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                {(() => {
+                                    const timeSlots = Array.from(
+                                        new Set(jadwalList.map((j: any) => `${j.jam_mulai} - ${j.jam_selesai}`))
+                                    ).sort();
+                                    
+                                    const hariList = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
+
+                                    return (
+                                        <table className="min-w-full divide-y divide-gray-200 border">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-4 py-3 border text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">
+                                                        Jam \ Hari
+                                                    </th>
+                                                    {hariList.map(h => (
+                                                        <th key={h} className="px-4 py-3 border text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            {h}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {timeSlots.map(time => (
+                                                    <tr key={time}>
+                                                        <td className="px-4 py-3 border whitespace-nowrap text-sm font-medium text-gray-900 bg-gray-50">
+                                                            {time}
+                                                        </td>
+                                                        {hariList.map(hari => {
+                                                            const item = jadwalList.find((j: any) => j.hari === hari && `${j.jam_mulai} - ${j.jam_selesai}` === time);
+                                                            return (
+                                                                <td key={`${time}-${hari}`} className="px-4 py-3 border text-sm text-center align-top relative min-w-[150px]">
+                                                                    {item ? (
+                                                                        <div className="flex flex-col h-full justify-between gap-2 p-1 rounded bg-blue-50 border border-blue-100">
+                                                                            <div>
+                                                                                <div className="font-semibold text-blue-900 text-xs">
+                                                                                    {item.pengampu_mapel?.mapel?.nama_mapel}
+                                                                                </div>
+                                                                                <div className="text-gray-500 text-[11px] mt-1">
+                                                                                    {item.pengampu_mapel?.guru?.nama_lengkap}
+                                                                                </div>
+                                                                            </div>
+                                                                            {isAdmin && (
+                                                                                <button
+                                                                                    onClick={() => handleDelete(item.id)}
+                                                                                    disabled={isDeleting}
+                                                                                    className="text-red-500 hover:text-red-700 disabled:opacity-50 self-end mt-1"
+                                                                                    title="Hapus Jadwal"
+                                                                                >
+                                                                                    <Trash2 size={14} />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-gray-300">-</span>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    );
+                                })()}
                             </div>
                         ) : (
                             <div className="p-8 text-center text-gray-500">

@@ -12,8 +12,8 @@ export default function PresensiPage() {
 
   const { data: jadwalList, isLoading: isLoadingJadwal } = useJadwalGuru(user?.guru_id);
   
-  const selectedJadwal = jadwalList?.find((j) => j.id === selectedJadwalId);
-  const { data: rombel, isLoading: isLoadingRombel } = useRombelById(selectedJadwal?.rombel_id || null);
+  const selectedJadwal = jadwalList?.find((j: any) => j.id === selectedJadwalId);
+  const { data: rombel, isLoading: isLoadingRombel } = useRombelById(selectedJadwal?.pengampu_mapel?.rombel_id || null);
   
   const [activeTab, setActiveTab] = useState<'input' | 'rekap'>('input');
 
@@ -120,7 +120,7 @@ export default function PresensiPage() {
               <option value="">-- Pilih Jadwal --</option>
               {jadwalList?.map((j: any) => (
                 <option key={j.id} value={j.id}>
-                  {j.rombel?.nama_kelas} - {j.mapel?.nama_mapel} ({j.hari}, {j.jam_mulai}-{j.jam_selesai})
+                  {j.pengampu_mapel?.rombel?.nama_kelas} - {j.pengampu_mapel?.mapel?.nama_mapel} ({j.hari}, {j.jam_mulai}-{j.jam_selesai})
                 </option>
               ))}
             </select>

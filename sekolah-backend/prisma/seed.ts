@@ -101,12 +101,14 @@ async function main() {
   console.log(`✅ ${createdGurus.length} Guru berhasil dibuat (Password: guru123)`);
 
   // ============================================================================
-  // 4. ROMBEL (9 Kelas: X A-C, XI A-C, XII A-C)
+  // 4. ROMBEL (5 Kelas: X A, X B, XI A, XI B, XII A)
   // ============================================================================
   const rombelNames = [
-    { nama: 'X A', tingkat: 10 }, { nama: 'X B', tingkat: 10 }, { nama: 'X C', tingkat: 10 },
-    { nama: 'XI A', tingkat: 11 }, { nama: 'XI B', tingkat: 11 }, { nama: 'XI C', tingkat: 11 },
-    { nama: 'XII A', tingkat: 12 }, { nama: 'XII B', tingkat: 12 }, { nama: 'XII C', tingkat: 12 },
+    { nama: 'X A', tingkat: 10 }, 
+    { nama: 'X B', tingkat: 10 },
+    { nama: 'XI A', tingkat: 11 }, 
+    { nama: 'XI B', tingkat: 11 },
+    { nama: 'XII A', tingkat: 12 },
   ];
 
   const createdRombels = [];
@@ -168,7 +170,8 @@ async function main() {
     { mulai: '13:30', selesai: '15:00' }
   ];
 
-  for (const rombel of createdRombels) {
+  for (let rIndex = 0; rIndex < createdRombels.length; rIndex++) {
+    const rombel = createdRombels[rIndex];
     const pengampusForRombel = [];
     
     // Buat Pengampu Mapel untuk ke-5 mapel
@@ -190,8 +193,9 @@ async function main() {
     // Buat Jadwal dari Senin s/d Jumat (Jam 8 - 3 Sore) dengan mapel di-mix
     for (let h = 0; h < HARI.length; h++) {
       for (let s = 0; s < SLOTS.length; s++) {
-        // Mix mapel by adding day and slot index, modulo 5
-        const pIndex = (h + s) % pengampusForRombel.length;
+        // Mix mapel by adding day, slot index, and rombel index (rIndex)
+        // This ensures different classes get different teachers at the same time
+        const pIndex = (h + s + rIndex) % pengampusForRombel.length;
         const pengampu = pengampusForRombel[pIndex];
 
         const jadwal = await prisma.jadwalPelajaran.create({

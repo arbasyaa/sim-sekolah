@@ -202,9 +202,59 @@ export const akademikService = {
     // ===================== JADWAL PELAJARAN =====================
     async createJadwal(data: CreateJadwalData) {
         const pengampu = await prisma.pengampuMapel.findUnique({
-            where: { id: data.pengampu_mapel_id }
+            where: { id: data.pengampu_mapel_id },
+            include: {
+                guru: true,
+                rombel: true,
+                mapel: true
+            }
         });
         if (!pengampu) throw new AppError(404, 'Pengampu Mapel tidak ditemukan.');
+
+        // Cek bentrok jadwal: Guru tidak boleh mengajar lebih dari 1 kelas di waktu yang sama (atau overlap)
+        // Untuk saat ini kita asumsikan pengecekan exact match jam_mulai dan jam_selesai atau di hari yang sama
+        // Logic sederhana: cek apakah ada jadwal dengan hari dan (jam_mulai atau jam_selesai) yang overlap.
+        // Tapi sesuai instruksi simpel: "di satu waktu yang sama" (jam_mulai & jam_selesai sama)
+        const guruBentrok = await prisma.jadwalPelajaran.findFirst({
+            where: {
+                hari: data.hari,
+                jam_mulai: data.jam_mulai,
+                jam_selesai: data.jam_selesai,
+                pengampu_mapel: {
+                    guru_id: pengampu.guru_id
+                }
+            },
+            include: {
+                pengampu_mapel: {
+                    include: { rombel: true, mapel: true }
+                }
+            }
+        });
+
+        if (guruBentrok) {
+            throw new AppError(409, `Bentrok! Guru ${pengampu.guru.nama_lengkap} sudah memiliki jadwal mengajar ${guruBentrok.pengampu_mapel.mapel.nama_mapel} di kelas ${guruBentrok.pengampu_mapel.rombel.nama_kelas} pada hari ${data.hari} jam ${data.jam_mulai}-${data.jam_selesai}.`);
+        }
+
+        // Cek bentrok jadwal: Kelas/Rombel tidak boleh memiliki lebih dari 1 pelajaran di waktu yang sama
+        const rombelBentrok = await prisma.jadwalPelajaran.findFirst({
+            where: {
+                hari: data.hari,
+                jam_mulai: data.jam_mulai,
+                jam_selesai: data.jam_selesai,
+                pengampu_mapel: {
+                    rombel_id: pengampu.rombel_id
+                }
+            },
+            include: {
+                pengampu_mapel: {
+                    include: { mapel: true }
+                }
+            }
+        });
+
+        if (rombelBentrok) {
+            throw new AppError(409, `Bentrok! Kelas ${pengampu.rombel.nama_kelas} sudah memiliki jadwal pelajaran ${rombelBentrok.pengampu_mapel.mapel.nama_mapel} pada hari ${data.hari} jam ${data.jam_mulai}-${data.jam_selesai}.`);
+        }
 
         return prisma.jadwalPelajaran.create({
             data,

@@ -27,7 +27,7 @@ router.delete('/jadwal/:id', authorize('SUPERADMIN', 'ADMIN_TU'), akademikContro
 
 // ===================== PRESENSI =====================
 router.post('/presensi', authorize('SUPERADMIN', 'ADMIN_TU', 'GURU'), akademikController.inputPresensi);
-router.get('/presensi/rombel/:id', akademikController.getPresensi);
+router.get('/presensi', akademikController.getPresensi);
 
 // ===================== NILAI =====================
 router.post('/nilai', authorize('SUPERADMIN', 'GURU'), akademikController.inputNilai);

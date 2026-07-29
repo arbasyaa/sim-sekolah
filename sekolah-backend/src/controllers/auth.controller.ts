@@ -26,13 +26,20 @@ export const authController = {
 
         const user = await prisma.user.findUnique({
             where: { id: req.user.userId },
-            select: { id: true, username: true, role: true },
+            include: { guru: true },
         });
 
         if (!user) {
             throw new AppError(404, 'User tidak ditemukan.');
         }
 
-        sendSuccess(res, 'Data user berhasil diambil.', user);
+        const userData = {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            guru_id: user.guru?.id,
+        };
+
+        sendSuccess(res, 'Data user berhasil diambil.', userData);
     }),
 };
