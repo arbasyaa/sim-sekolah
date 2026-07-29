@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { akademikService } from '../services/akademik.service';
 import { sendSuccess } from '../utils/response';
 import { asyncWrapper } from '../utils/asyncWrapper';
+import { AppError } from '../utils/appError';
 
 // ================= ZOD SCHEMAS =================
 const idParamSchema = z.object({
@@ -41,7 +42,7 @@ const inputPresensiSchema = z.object({
 });
 
 const getPresensiQuerySchema = z.object({
-  tanggal: z.string().transform((val) => new Date(val)),
+  tanggal: z.string().optional().transform((val) => val ? new Date(val) : undefined),
 });
 
 const inputNilaiSchema = z.object({
@@ -95,6 +96,11 @@ export const akademikController = {
   }),
 
   // ===================== PENGAMPU MAPEL =====================
+  getAllPengampu: asyncWrapper(async (req: Request, res: Response) => {
+    const data = await akademikService.getAllPengampu();
+    sendSuccess(res, 'Data pengampu mapel berhasil diambil.', data);
+  }),
+
   createPengampu: asyncWrapper(async (req: Request, res: Response) => {
     const body = createPengampuSchema.parse(req.body);
     const data = await akademikService.createPengampu(body);
@@ -107,26 +113,62 @@ export const akademikController = {
     sendSuccess(res, 'Data kelas yang diampu berhasil diambil.', data);
   }),
 
-  // ===================== PRESENSI =====================
-  inputPresensi: asyncWrapper(async (req: Request, res: Response) => {
-    const { tanggal, items } = inputPresensiSchema.parse(req.body);
-    const data = await akademikService.inputPresensi(tanggal, items);
-    sendSuccess(res, 'Presensi berhasil disimpan.', data);
-  }),
+    // ===================== JADWAL PELAJARAN =====================
+    createJadwal: asyncWrapper(async (req: Request, res: Response) => {
+        const result = await akademikService.createJadwal(req.body);
+        sendSuccess(res, 'Jadwal pelajaran berhasil ditambahkan', result, 201);
+    }),
 
-  getPresensi: asyncWrapper(async (req: Request, res: Response) => {
-    const { id } = idParamSchema.parse(req.params);
-    const { tanggal } = getPresensiQuerySchema.parse(req.query);
-    const data = await akademikService.getPresensiByRombel(id, tanggal);
-    sendSuccess(res, 'Data presensi berhasil diambil.', data);
-  }),
+    getJadwal: asyncWrapper(async (req: Request, res: Response) => {
+        const { rombel_id, guru_id } = req.query;
+        let result;
 
-  // ===================== NILAI =====================
-  inputNilai: asyncWrapper(async (req: Request, res: Response) => {
-    const { items } = inputNilaiSchema.parse(req.body);
-    const data = await akademikService.inputNilai(items);
-    sendSuccess(res, 'Nilai berhasil disimpan.', data);
-  }),
+        if (rombel_id) {
+            result = await akademikService.getJadwalByRombel(Number(rombel_id));
+        } else if (guru_id) {
+            result = await akademikService.getJadwalByGuru(Number(guru_id));
+        } else {
+            throw new AppError(400, 'Harap sertakan rombel_id atau guru_id');
+        }
+
+        sendSuccess(res, 'Berhasil mengambil data jadwal', result);
+    }),
+
+    deleteJadwal: asyncWrapper(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        await akademikService.deleteJadwal(Number(id));
+        sendSuccess(res, 'Jadwal pelajaran berhasil dihapus', null);
+    }),
+
+    // ===================== PRESENSI =====================
+    inputPresensi: asyncWrapper(async (req: Request, res: Response) => {
+        const { jadwal_id, tanggal, items } = req.body;
+        if (!jadwal_id || !tanggal || !items) {
+            throw new AppError(400, 'jadwal_id, tanggal, dan items wajib diisi');
+        }
+        const result = await akademikService.inputPresensi(Number(jadwal_id), new Date(tanggal), items);
+
+        sendSuccess(res, 'Presensi berhasil disimpan', result, 201);
+    }),
+
+    getPresensi: asyncWrapper(async (req: Request, res: Response) => {
+        const { jadwal_id, tanggal } = req.query;
+
+        if (!jadwal_id) {
+            throw new AppError(400, 'jadwal_id wajib diisi');
+        }
+
+        const date = tanggal ? new Date(tanggal as string) : undefined;
+        const result = await akademikService.getPresensiByJadwal(Number(jadwal_id), date);
+
+        sendSuccess(res, 'Berhasil mengambil data presensi', result);
+    }),
+
+    inputNilai: asyncWrapper(async (req: Request, res: Response) => {
+        const body = inputNilaiSchema.parse(req.body);
+        const result = await akademikService.inputNilai(body.items);
+        sendSuccess(res, 'Data nilai berhasil disimpan.', result, 201);
+    }),
 
   getNilai: asyncWrapper(async (req: Request, res: Response) => {
     const { id } = idParamSchema.parse(req.params);

@@ -1,6 +1,6 @@
 import prisma from '../utils/prisma';
 import { AppError } from '../utils/appError';
-import { StatusPresensi, JenisNilai } from '@prisma/client';
+import { StatusPresensi, JenisNilai, Hari } from '@prisma/client';
 
 // ================= INTERFACES =================
 interface CreateRombelData {
@@ -21,17 +21,24 @@ interface CreatePengampuData {
     rombel_id: number;
 }
 
+interface CreateJadwalData {
+    pengampu_mapel_id: number;
+    hari: Hari;
+    jam_mulai: string;
+    jam_selesai: string;
+}
+
 interface InputPresensiItem {
     anggota_rombel_id: number;
     status: StatusPresensi;
 }
 
 interface InputNilaiItem {
-  anggota_rombel_id: number;
-  pengampu_mapel_id: number;
-  jenis_nilai: JenisNilai;
-  urutan: number;
-  skor: number;
+    anggota_rombel_id: number;
+    pengampu_mapel_id: number;
+    jenis_nilai: JenisNilai;
+    urutan: number;
+    skor: number;
 }
 
 export const akademikService = {
@@ -75,7 +82,6 @@ export const akademikService = {
     },
 
     async createRombel(data: CreateRombelData) {
-        // Verify tahun ajaran exists
         const tahunAjaran = await prisma.tahunAjaran.findUnique({
             where: { id: data.tahun_ajaran_id },
         });
@@ -83,7 +89,6 @@ export const akademikService = {
             throw new AppError(404, 'Tahun ajaran tidak ditemukan.');
         }
 
-        // Verify guru exists
         const guru = await prisma.guru.findUnique({
             where: { id: data.wali_kelas_id },
         });
@@ -102,7 +107,6 @@ export const akademikService = {
 
     // ===================== ANGGOTA ROMBEL =====================
     async assignSiswaToRombel(data: AssignSiswaToRombelData) {
-        // Verify rombel exists
         const rombel = await prisma.rombel.findUnique({
             where: { id: data.rombel_id },
         });
@@ -110,7 +114,6 @@ export const akademikService = {
             throw new AppError(404, 'Rombel tidak ditemukan.');
         }
 
-        // Create anggota rombel entries (skip duplicates)
         const createData = data.siswa_ids.map((siswa_id) => ({
             rombel_id: data.rombel_id,
             siswa_id,
@@ -137,8 +140,24 @@ export const akademikService = {
     },
 
     // ===================== PENGAMPU MAPEL =====================
+    async getAllPengampu() {
+        return prisma.pengampuMapel.findMany({
+            include: {
+                guru: true,
+                mapel: true,
+                rombel: {
+                    include: {
+                        tahun_ajaran: true
+                    }
+                }
+            },
+            orderBy: {
+                id: 'desc'
+            }
+        });
+    },
+
     async createPengampu(data: CreatePengampuData) {
-        // Verify all foreign keys
         const guru = await prisma.guru.findUnique({ where: { id: data.guru_id } });
         if (!guru) throw new AppError(404, 'Guru tidak ditemukan.');
 
@@ -148,7 +167,6 @@ export const akademikService = {
         const rombel = await prisma.rombel.findUnique({ where: { id: data.rombel_id } });
         if (!rombel) throw new AppError(404, 'Rombel tidak ditemukan.');
 
-        // Check unique constraint (1 mapel di 1 kelas hanya 1 guru)
         const existing = await prisma.pengampuMapel.findUnique({
             where: { mapel_id_rombel_id: { mapel_id: data.mapel_id, rombel_id: data.rombel_id } },
         });
@@ -166,9 +184,6 @@ export const akademikService = {
         });
     },
 
-    /**
-     * Get daftar kelas yang diampu oleh guru tertentu
-     */
     async getKelasByGuruId(guruId: number) {
         return prisma.pengampuMapel.findMany({
             where: { guru_id: guruId },
@@ -184,20 +199,89 @@ export const akademikService = {
         });
     },
 
+    // ===================== JADWAL PELAJARAN =====================
+    async createJadwal(data: CreateJadwalData) {
+        const pengampu = await prisma.pengampuMapel.findUnique({
+            where: { id: data.pengampu_mapel_id }
+        });
+        if (!pengampu) throw new AppError(404, 'Pengampu Mapel tidak ditemukan.');
+
+        return prisma.jadwalPelajaran.create({
+            data,
+            include: {
+                pengampu_mapel: {
+                    include: {
+                        mapel: true,
+                        guru: true,
+                        rombel: true
+                    }
+                }
+            }
+        });
+    },
+
+    async getJadwalByRombel(rombelId: number) {
+        return prisma.jadwalPelajaran.findMany({
+            where: {
+                pengampu_mapel: { rombel_id: rombelId }
+            },
+            include: {
+                pengampu_mapel: {
+                    include: {
+                        mapel: true,
+                        guru: true,
+                    }
+                }
+            },
+            orderBy: [
+                { hari: 'asc' },
+                { jam_mulai: 'asc' }
+            ]
+        });
+    },
+
+    async getJadwalByGuru(guruId: number) {
+        return prisma.jadwalPelajaran.findMany({
+            where: {
+                pengampu_mapel: { guru_id: guruId }
+            },
+            include: {
+                pengampu_mapel: {
+                    include: {
+                        mapel: true,
+                        rombel: true,
+                    }
+                }
+            },
+            orderBy: [
+                { hari: 'asc' },
+                { jam_mulai: 'asc' }
+            ]
+        });
+    },
+
+    async deleteJadwal(id: number) {
+        return prisma.jadwalPelajaran.delete({
+            where: { id }
+        });
+    },
+
     // ===================== PRESENSI =====================
-    async inputPresensi(tanggal: Date, items: InputPresensiItem[]) {
+    async inputPresensi(jadwalId: number, tanggal: Date, items: InputPresensiItem[]) {
         const results = await Promise.all(
             items.map((item) =>
                 prisma.presensi.upsert({
                     where: {
-                        anggota_rombel_id_tanggal: {
+                        anggota_rombel_id_jadwal_id_tanggal: {
                             anggota_rombel_id: item.anggota_rombel_id,
+                            jadwal_id: jadwalId,
                             tanggal,
                         },
                     },
                     update: { status: item.status },
                     create: {
                         anggota_rombel_id: item.anggota_rombel_id,
+                        jadwal_id: jadwalId,
                         tanggal,
                         status: item.status,
                     },
@@ -208,42 +292,46 @@ export const akademikService = {
         return { count: results.length };
     },
 
-    async getPresensiByRombel(rombelId: number, tanggal: Date) {
+    async getPresensiByJadwal(jadwalId: number, tanggal?: Date) {
+        const whereClause: any = {
+            jadwal_id: jadwalId
+        };
+        if (tanggal) {
+            whereClause.tanggal = tanggal;
+        }
+
         return prisma.presensi.findMany({
-            where: {
-                anggota_rombel: { rombel_id: rombelId },
-                tanggal,
-            },
+            where: whereClause,
             include: {
                 anggota_rombel: {
                     include: { siswa: { select: { id: true, nis: true, nama_lengkap: true } } },
                 },
             },
-            orderBy: { anggota_rombel: { siswa: { nama_lengkap: 'asc' } } },
+            orderBy: [{ tanggal: 'asc' }, { anggota_rombel: { siswa: { nama_lengkap: 'asc' } } }],
         });
     },
 
-  // ===================== NILAI =====================
-  async inputNilai(items: InputNilaiItem[]) {
-    const results = await Promise.all(
-      items.map((item) =>
-        prisma.nilai.upsert({
-          where: {
-            anggota_rombel_id_pengampu_mapel_id_jenis_nilai_urutan: {
-              anggota_rombel_id: item.anggota_rombel_id,
-              pengampu_mapel_id: item.pengampu_mapel_id,
-              jenis_nilai: item.jenis_nilai,
-              urutan: item.urutan,
-            },
-          },
-          update: { skor: item.skor },
-          create: item,
-        })
-      )
-    );
+    // ===================== NILAI =====================
+    async inputNilai(items: InputNilaiItem[]) {
+        const results = await Promise.all(
+            items.map((item) =>
+                prisma.nilai.upsert({
+                    where: {
+                        anggota_rombel_id_pengampu_mapel_id_jenis_nilai_urutan: {
+                            anggota_rombel_id: item.anggota_rombel_id,
+                            pengampu_mapel_id: item.pengampu_mapel_id,
+                            jenis_nilai: item.jenis_nilai,
+                            urutan: item.urutan,
+                        },
+                    },
+                    update: { skor: item.skor },
+                    create: item,
+                })
+            )
+        );
 
-    return { count: results.length };
-  },
+        return { count: results.length };
+    },
 
     async getNilaiByRombelAndMapel(rombelId: number, pengampuMapelId: number) {
         return prisma.nilai.findMany({
@@ -260,9 +348,6 @@ export const akademikService = {
         });
     },
 
-    /**
-     * Get rekap nilai siswa per rombel (untuk raport)
-     */
     async getRekapNilaiRombel(rombelId: number) {
         const anggota = await prisma.anggotaRombel.findMany({
             where: { rombel_id: rombelId },
@@ -279,5 +364,5 @@ export const akademikService = {
         });
 
         return anggota;
-    },
+    }
 };

@@ -25,13 +25,14 @@ const adminMenus = [
   { to: '/mapel', label: 'Mata Pelajaran', icon: BookOpen },
   { to: '/tahun-ajaran', label: 'Tahun Ajaran', icon: Calendar },
   { to: '/rombel', label: 'Rombel (Kelas)', icon: School },
+  { to: '/jadwal', label: 'Jadwal Pelajaran', icon: Calendar },
 ];
 
 const guruMenus = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/jadwal', label: 'Jadwal Pelajaran', icon: Calendar },
   { to: '/presensi', label: 'Presensi', icon: ClipboardList },
-  { to: '/nilai', label: 'Input Nilai', icon: FileText },
-  { to: '/raport', label: 'Cetak Raport', icon: FileText },
+  { to: '/nilai', label: 'Input Nilai & Cetak', icon: FileText },
 ];
 
 export default function Sidebar({ open, onClose }: SidebarProps) {

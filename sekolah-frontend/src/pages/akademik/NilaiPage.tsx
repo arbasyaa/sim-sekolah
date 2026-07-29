@@ -92,70 +92,6 @@ const CetakRekapAkhirDocument = ({ studentData, rombelName }: any) => {
   )
 }
 
-const CetakMapelDocument = ({ student, pengampu, nilaiData, maxTugas }: any) => {
-  if (!student || !pengampu) return null;
-  
-  const studentNilai = nilaiData?.filter((n: any) => n.anggota_rombel_id === student.id) || [];
-  const tugasList = studentNilai.filter((n: any) => n.jenis_nilai === 'TUGAS');
-  
-  const sum = tugasList.reduce((acc: number, curr: any) => acc + curr.skor, 0);
-  const avgTugas = tugasList.length > 0 ? Math.round(sum / tugasList.length) : 0;
-  
-  const uts = studentNilai.find((n: any) => n.jenis_nilai === 'UTS')?.skor || 0;
-  const uas = studentNilai.find((n: any) => n.jenis_nilai === 'UAS')?.skor || 0;
-  const akhir = Math.round((avgTugas * 0.2) + (uts * 0.3) + (uas * 0.5));
-
-  return (
-      <div className="print-only p-10 bg-white text-black font-sans w-[210mm] min-h-[297mm] mx-auto">
-          <div className="text-center mb-8 border-b-2 border-black pb-4">
-              <h1 className="text-2xl font-bold uppercase">Laporan Nilai Mata Pelajaran</h1>
-              <h2 className="text-xl font-bold">SMA BINA NUSANTARA</h2>
-          </div>
-          
-          <div className="flex justify-between mb-8 text-sm">
-              <table className="w-1/2">
-                  <tbody>
-                      <tr><td className="w-32 py-1">Nama Siswa</td><td className="w-4">:</td><td className="font-bold">{student.siswa?.nama_lengkap}</td></tr>
-                      <tr><td className="w-32 py-1">NIS / NISN</td><td>:</td><td>{student.siswa?.nis} / {student.siswa?.nisn}</td></tr>
-                  </tbody>
-              </table>
-              <table className="w-1/2">
-                  <tbody>
-                      <tr><td className="w-32 py-1">Kelas</td><td className="w-4">:</td><td>{pengampu.rombel?.nama_kelas}</td></tr>
-                      <tr><td className="w-32 py-1">Mata Pelajaran</td><td>:</td><td>{pengampu.mapel?.nama_mapel}</td></tr>
-                  </tbody>
-              </table>
-          </div>
-
-          <table className="w-full border-collapse border border-black text-sm mb-8">
-              <thead>
-                  <tr className="bg-gray-100">
-                      {[...Array(maxTugas)].map((_, i) => (
-                         <th key={i} className="border border-black px-2 py-2">Tugas {i+1}</th>
-                      ))}
-                      <th className="border border-black px-2 py-2">Rata-rata Tugas</th>
-                      <th className="border border-black px-2 py-2">UTS</th>
-                      <th className="border border-black px-2 py-2">UAS</th>
-                      <th className="border border-black px-2 py-2">Nilai Akhir</th>
-                  </tr>
-              </thead>
-              <tbody>
-                  <tr>
-                       {[...Array(maxTugas)].map((_, i) => {
-                           const n = tugasList.find((t: any) => t.urutan === i + 1);
-                           return <td key={i} className="border border-black px-2 py-2 text-center">{n?.skor || '-'}</td>
-                       })}
-                       <td className="border border-black px-2 py-2 text-center">{avgTugas}</td>
-                       <td className="border border-black px-2 py-2 text-center">{uts}</td>
-                       <td className="border border-black px-2 py-2 text-center">{uas}</td>
-                       <td className="border border-black px-2 py-2 text-center font-bold bg-gray-100">{akhir}</td>
-                  </tr>
-              </tbody>
-          </table>
-      </div>
-  )
-}
-
 export default function NilaiPage() {
   const user = useAuthStore((state) => state.user);
   
@@ -167,7 +103,6 @@ export default function NilaiPage() {
   const [showModalAkhir, setShowModalAkhir] = useState(false);
   const [selectedRombelForModal, setSelectedRombelForModal] = useState<number | ''>('');
   const [selectedStudentForModal, setSelectedStudentForModal] = useState<number | ''>('');
-  const [selectedStudentForPrint, setSelectedStudentForPrint] = useState<any>(null);
 
   const { data: pengampuList } = usePengampuGuru(user?.guru_id);
 
@@ -193,7 +128,6 @@ export default function NilaiPage() {
     setSelectedPengampuId('');
   }, [selectedRombelId]);
 
-  const selectedPengampu = pengampuList?.find((p) => p.id === selectedPengampuId);
   const rombelId = selectedRombelId === '' ? null : selectedRombelId;
 
   const { data: rombel, isLoading: isLoadingRombel } = useRombelById(rombelId);
@@ -307,6 +241,7 @@ export default function NilaiPage() {
   }
 
   return (
+    <>
     <div className="space-y-6 print-hide">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Input Nilai Siswa</h1>
@@ -611,25 +546,17 @@ export default function NilaiPage() {
         </div>
       )}
       
-      <div className="print-show hidden">
-        {/* If printing from outside modal */}
-        {!showModalAkhir && selectedStudentForPrint && (
-          <CetakMapelDocument
-            student={selectedStudentForPrint}
-            pengampu={selectedPengampu}
-            nilaiData={nilaiData}
-            maxTugas={maxTugas}
-          />
-        )}
-        
-        {/* If printing from inside modal */}
-        {showModalAkhir && selectedStudentForModal !== '' && rekapData && (
-          <CetakRekapAkhirDocument
-            studentData={rekapData.find((r: any) => r.id === selectedStudentForModal)}
-            rombelName={uniqueRombels.find(r => r.id === selectedRombelForModal)?.nama_kelas}
-          />
-        )}
-      </div>
     </div>
+
+    <div className="print-show hidden">
+      {/* If printing from inside modal */}
+      {showModalAkhir && selectedStudentForModal !== '' && rekapData && (
+        <CetakRekapAkhirDocument
+          studentData={rekapData.find((r: any) => r.id === selectedStudentForModal)}
+          rombelName={uniqueRombels.find(r => r.id === selectedRombelForModal)?.nama_kelas}
+        />
+      )}
+    </div>
+    </>
   );
 }

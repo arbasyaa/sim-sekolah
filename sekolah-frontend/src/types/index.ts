@@ -70,6 +70,7 @@ export interface Rombel {
   tahun_ajaran?: TahunAjaran;
   wali_kelas?: Guru;
   anggota_kelas?: AnggotaRombel[];
+  mapel_diajarkan?: PengampuMapel[];
 }
 
 export interface AnggotaRombel {

@@ -1,28 +1,28 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { usePengampuGuru, useRombelById, usePresensiRombel, useInputPresensi } from '@/hooks/useAkademikData';
+import { useJadwalGuru, useRombelById, usePresensiJadwal, useInputPresensi } from '@/hooks/useAkademikData';
 import { format } from 'date-fns';
-import type { StatusPresensi } from '@/types';
+import type { StatusPresensi, Presensi } from '@/types';
 
 export default function PresensiPage() {
   const user = useAuthStore((state) => state.user);
   
-  const [selectedRombelId, setSelectedRombelId] = useState<number | ''>('');
+  const [selectedJadwalId, setSelectedJadwalId] = useState<number | ''>('');
   const [tanggal, setTanggal] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
-  const { data: pengampuList } = usePengampuGuru(user?.guru_id);
-  const { data: rombel, isLoading: isLoadingRombel } = useRombelById(selectedRombelId === '' ? null : selectedRombelId);
-  const { data: presensiData, isLoading: isLoadingPresensi } = usePresensiRombel(
-    selectedRombelId === '' ? null : selectedRombelId,
-    tanggal
+  const { data: jadwalList, isLoading: isLoadingJadwal } = useJadwalGuru(user?.guru_id);
+  
+  const selectedJadwal = jadwalList?.find((j) => j.id === selectedJadwalId);
+  const { data: rombel, isLoading: isLoadingRombel } = useRombelById(selectedJadwal?.rombel_id || null);
+  
+  const [activeTab, setActiveTab] = useState<'input' | 'rekap'>('input');
+
+  const { data: presensiData, isLoading: isLoadingPresensi } = usePresensiJadwal(
+    selectedJadwalId === '' ? null : selectedJadwalId,
+    activeTab === 'input' ? tanggal : undefined
   );
 
   const { mutate: inputPresensi, isPending } = useInputPresensi();
-
-  // Extract unique rombel from pengampu
-  const uniqueRombel = pengampuList
-    ? Array.from(new Map(pengampuList.map((p) => [p.rombel_id, p.rombel])).values())
-    : [];
 
   // Local state for presensi form
   const [presensiForm, setPresensiForm] = useState<Record<number, StatusPresensi>>({});
@@ -31,9 +31,9 @@ export default function PresensiPage() {
   useEffect(() => {
     if (rombel?.anggota_kelas) {
       const newForm: Record<number, StatusPresensi> = {};
-      rombel.anggota_kelas.forEach((a) => {
-        const existing = presensiData?.find((p) => p.anggota_rombel_id === a.id);
-        newForm[a.id] = existing ? existing.status : 'HADIR'; // Default HADIR
+      rombel.anggota_kelas.forEach((a: any) => {
+        const existing = presensiData?.find((p: Presensi) => p.anggota_rombel_id === a.id);
+        newForm[a.id] = existing ? (existing.status as StatusPresensi) : 'HADIR';
       });
       setPresensiForm(newForm);
     }
@@ -47,12 +47,12 @@ export default function PresensiPage() {
   };
 
   const handleSave = () => {
-    if (selectedRombelId === '') return;
+    if (selectedJadwalId === '') return;
     
     const payload = {
-      rombel_id: selectedRombelId,
+      jadwal_id: selectedJadwalId,
       tanggal,
-      presensi: Object.entries(presensiForm).map(([id, status]) => ({
+      items: Object.entries(presensiForm).map(([id, status]) => ({
         anggota_rombel_id: Number(id),
         status,
       })),
@@ -76,46 +76,76 @@ export default function PresensiPage() {
     );
   }
 
+  // Calculate unique dates for rekap
+  const uniqueDates = Array.from(new Set(presensiData?.map((p: Presensi) => p.tanggal?.toString().split('T')[0]))).sort();
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Input Presensi Harian</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Presensi Mengajar (Per Jadwal)</h1>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-end">
-        <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Kelas (Rombel)</label>
-          <select
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            value={selectedRombelId}
-            onChange={(e) => setSelectedRombelId(e.target.value ? Number(e.target.value) : '')}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('input')}
+            className={`px-6 py-3 text-sm font-medium ${
+              activeTab === 'input'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
-            <option value="">-- Pilih Kelas --</option>
-            {uniqueRombel.map((r) => (
-              <option key={r?.id} value={r?.id}>
-                {r?.nama_kelas}
-              </option>
-            ))}
-          </select>
+            Input Presensi
+          </button>
+          <button
+            onClick={() => setActiveTab('rekap')}
+            className={`px-6 py-3 text-sm font-medium ${
+              activeTab === 'rekap'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Rekap Presensi
+          </button>
         </div>
-        <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-          <input
-            type="date"
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            value={tanggal}
-            onChange={(e) => setTanggal(e.target.value)}
-          />
+
+        <div className="p-6 flex flex-col md:flex-row gap-4 items-end bg-gray-50">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Jadwal Mengajar</label>
+            <select
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              value={selectedJadwalId}
+              onChange={(e) => setSelectedJadwalId(e.target.value ? Number(e.target.value) : '')}
+            >
+              <option value="">-- Pilih Jadwal --</option>
+              {jadwalList?.map((j: any) => (
+                <option key={j.id} value={j.id}>
+                  {j.rombel?.nama_kelas} - {j.mapel?.nama_mapel} ({j.hari}, {j.jam_mulai}-{j.jam_selesai})
+                </option>
+              ))}
+            </select>
+          </div>
+          {activeTab === 'input' && (
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kehadiran</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                value={tanggal}
+                onChange={(e) => setTanggal(e.target.value)}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {selectedRombelId !== '' && (
+      {selectedJadwalId !== '' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-          {(isLoadingRombel || isLoadingPresensi) ? (
-            <div className="p-8 text-center text-gray-500">Memuat data siswa...</div>
+          {(isLoadingJadwal || isLoadingRombel || isLoadingPresensi) ? (
+            <div className="p-8 text-center text-gray-500">Memuat data...</div>
           ) : rombel?.anggota_kelas?.length === 0 ? (
             <div className="p-8 text-center text-gray-500">Belum ada siswa di kelas ini.</div>
-          ) : (
+          ) : activeTab === 'input' ? (
             <>
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -127,7 +157,7 @@ export default function PresensiPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {rombel?.anggota_kelas?.map((anggota, index) => (
+                  {rombel?.anggota_kelas?.map((anggota: any, index: number) => (
                     <tr key={anggota.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm text-gray-600">{index + 1}</td>
                       <td className="px-6 py-4 text-sm text-gray-800">
@@ -162,6 +192,51 @@ export default function PresensiPage() {
                 </button>
               </div>
             </>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-6 py-3 text-sm font-semibold text-gray-600 w-16">No</th>
+                    <th className="px-6 py-3 text-sm font-semibold text-gray-600">Siswa</th>
+                    {uniqueDates.map(date => (
+                      <th key={date as string} className="px-3 py-3 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                        {date && format(new Date(date as string), 'dd/MM')}
+                      </th>
+                    ))}
+                    <th className="px-6 py-3 text-sm font-semibold text-gray-600">Total Hadir</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {rombel?.anggota_kelas?.map((anggota: any, index: number) => {
+                    let totalHadir = 0;
+                    return (
+                      <tr key={anggota.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-600">{index + 1}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                          {anggota.siswa?.nama_lengkap}
+                          <div className="text-xs text-gray-500 font-normal">{anggota.siswa?.nis}</div>
+                        </td>
+                        {uniqueDates.map(date => {
+                          const p = presensiData?.find((x: Presensi) => x.anggota_rombel_id === anggota.id && x.tanggal?.toString().startsWith(date as string));
+                          if (p?.status === 'HADIR') totalHadir++;
+                          return (
+                            <td key={date as string} className="px-3 py-4 text-sm">
+                              {p?.status === 'HADIR' && <span className="text-green-600 font-bold">H</span>}
+                              {p?.status === 'SAKIT' && <span className="text-yellow-600 font-bold">S</span>}
+                              {p?.status === 'IZIN' && <span className="text-blue-600 font-bold">I</span>}
+                              {p?.status === 'ALPA' && <span className="text-red-600 font-bold">A</span>}
+                              {!p && <span className="text-gray-300">-</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="px-6 py-4 text-sm font-bold text-gray-800">{totalHadir}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

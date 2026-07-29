@@ -1,0 +1,6 @@
+total 40
+drwxr-xr-x@  5 arbasya  staff   160 Jul 29 13:28 .
+drwxr-xr-x@ 13 arbasya  staff   416 Jul 29 15:43 ..
+drwxr-xr-x@  4 arbasya  staff   128 Jul 29 13:28 migrations
+-rw-r--r--@  1 arbasya  staff  4991 Jul 29 15:37 schema.prisma
+-rw-r--r--@  1 arbasya  staff  8924 Jul 29 15:38 seed.ts

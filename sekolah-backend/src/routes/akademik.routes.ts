@@ -20,6 +20,11 @@ router.delete('/rombel/:rombelId/siswa/:siswaId', authorize('SUPERADMIN', 'ADMIN
 router.post('/pengampu', authorize('SUPERADMIN', 'ADMIN_TU'), akademikController.createPengampu);
 router.get('/pengampu/guru/:id', akademikController.getKelasByGuru);
 
+// ===================== JADWAL =====================
+router.post('/jadwal', authorize('SUPERADMIN', 'ADMIN_TU'), akademikController.createJadwal);
+router.get('/jadwal', akademikController.getJadwal);
+router.delete('/jadwal/:id', authorize('SUPERADMIN', 'ADMIN_TU'), akademikController.deleteJadwal);
+
 // ===================== PRESENSI =====================
 router.post('/presensi', authorize('SUPERADMIN', 'ADMIN_TU', 'GURU'), akademikController.inputPresensi);
 router.get('/presensi/rombel/:id', akademikController.getPresensi);

@@ -3,6 +3,16 @@ import api from '@/lib/axios';
 import type { ApiResponse, PengampuMapel, Presensi, Nilai, Rombel } from '@/types';
 
 // ================= ROMBEL =================
+export const useRombel = () => {
+  return useQuery({
+    queryKey: ['rombel'],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<Rombel[]>>(`/akademik/rombel`);
+      return data.data;
+    },
+  });
+};
+
 export const useRombelById = (rombelId?: number | null) => {
   return useQuery({
     queryKey: ['rombel', rombelId],
@@ -15,7 +25,7 @@ export const useRombelById = (rombelId?: number | null) => {
   });
 };
 
-// ================= PENGAMPU MAPEL =================
+// ================= JADWAL / PENGAMPU MAPEL =================
 
 export const usePengampuGuru = (guruId?: number | null) => {
   return useQuery({
@@ -29,26 +39,83 @@ export const usePengampuGuru = (guruId?: number | null) => {
   });
 };
 
+export const useJadwalGuru = (guruId?: number | null) => {
+  return useQuery({
+    queryKey: ['jadwal', 'guru', guruId],
+    queryFn: async () => {
+      if (!guruId) return [];
+      const { data } = await api.get<ApiResponse<any[]>>(`/akademik/jadwal?guru_id=${guruId}`);
+      return data.data;
+    },
+    enabled: !!guruId,
+  });
+};
+
+export const useJadwalRombel = (rombelId?: number | null) => {
+  return useQuery({
+    queryKey: ['jadwal', 'rombel', rombelId],
+    queryFn: async () => {
+      if (!rombelId) return [];
+      const { data } = await api.get<ApiResponse<any[]>>(`/akademik/jadwal?rombel_id=${rombelId}`);
+      return data.data;
+    },
+    enabled: !!rombelId,
+  });
+};
+
+interface CreateJadwalPayload {
+  pengampu_mapel_id: number;
+  hari: string;
+  jam_mulai: string;
+  jam_selesai: string;
+}
+
+export const useCreateJadwal = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreateJadwalPayload) => {
+      const { data } = await api.post<ApiResponse<any>>('/akademik/jadwal', payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jadwal'] });
+    },
+  });
+};
+
+export const useDeleteJadwal = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { data } = await api.delete<ApiResponse<any>>(`/akademik/jadwal/${id}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jadwal'] });
+    },
+  });
+};
+
 // ================= PRESENSI =================
 
-export const usePresensiRombel = (rombelId?: number | null, tanggal?: string) => {
+export const usePresensiJadwal = (jadwalId?: number | null | '', tanggal?: string) => {
   return useQuery({
-    queryKey: ['presensi', rombelId, tanggal],
+    queryKey: ['presensi', jadwalId, tanggal],
     queryFn: async () => {
-      if (!rombelId || !tanggal) return [];
-      const { data } = await api.get<ApiResponse<Presensi[]>>(`/akademik/presensi/rombel/${rombelId}`, {
-        params: { tanggal }
+      if (!jadwalId) return [];
+      const { data } = await api.get<ApiResponse<Presensi[]>>(`/akademik/presensi`, {
+        params: { jadwal_id: jadwalId, tanggal }
       });
       return data.data;
     },
-    enabled: !!rombelId && !!tanggal,
+    enabled: !!jadwalId,
   });
 };
 
 interface InputPresensiPayload {
-  rombel_id: number;
+  jadwal_id: number;
   tanggal: string;
-  presensi: { anggota_rombel_id: number; status: string }[];
+  items: { anggota_rombel_id: number; status: string }[];
 }
 
 export const useInputPresensi = () => {
@@ -59,7 +126,7 @@ export const useInputPresensi = () => {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['presensi', variables.rombel_id, variables.tanggal] });
+      queryClient.invalidateQueries({ queryKey: ['presensi', variables.jadwal_id] });
     },
   });
 };

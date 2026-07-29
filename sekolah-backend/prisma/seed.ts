@@ -1,4 +1,4 @@
-import { PrismaClient, JenisNilai } from '@prisma/client';
+import { PrismaClient, JenisNilai, StatusPresensi } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -12,6 +12,7 @@ async function main() {
   console.log('🧹 Membersihkan data lama...');
   await prisma.nilai.deleteMany();
   await prisma.presensi.deleteMany();
+  await prisma.jadwalPelajaran.deleteMany();
   await prisma.pengampuMapel.deleteMany();
   await prisma.anggotaRombel.deleteMany();
   await prisma.rombel.deleteMany();
@@ -155,10 +156,22 @@ async function main() {
   console.log(`✅ ${siswaCounter - 1} Siswa berhasil dibuat dan dimasukkan ke kelas`);
 
   // ============================================================================
-  // 6. PENGAMPU MAPEL (Semua Mapel diajarkan di Semua Kelas)
+  // 6. PENGAMPU MAPEL & JADWAL PELAJARAN
   // ============================================================================
   const createdPengampuMapels = [];
+  const createdJadwals = [];
+  const HARI = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'] as const;
+  const SLOTS = [
+    { mulai: '08:00', selesai: '09:30' },
+    { mulai: '09:30', selesai: '11:00' },
+    { mulai: '11:30', selesai: '13:00' },
+    { mulai: '13:30', selesai: '15:00' }
+  ];
+
   for (const rombel of createdRombels) {
+    const pengampusForRombel = [];
+    
+    // Buat Pengampu Mapel untuk ke-5 mapel
     for (let i = 0; i < createdMapels.length; i++) {
       const mapel = createdMapels[i];
       const guru = createdGurus[i]; // guru_mtk -> MTK, guru_bin -> BIN, dsb.
@@ -171,9 +184,29 @@ async function main() {
         }
       });
       createdPengampuMapels.push(pengampu);
+      pengampusForRombel.push(pengampu);
+    }
+
+    // Buat Jadwal dari Senin s/d Jumat (Jam 8 - 3 Sore) dengan mapel di-mix
+    for (let h = 0; h < HARI.length; h++) {
+      for (let s = 0; s < SLOTS.length; s++) {
+        // Mix mapel by adding day and slot index, modulo 5
+        const pIndex = (h + s) % pengampusForRombel.length;
+        const pengampu = pengampusForRombel[pIndex];
+
+        const jadwal = await prisma.jadwalPelajaran.create({
+          data: {
+            pengampu_mapel_id: pengampu.id,
+            hari: HARI[h],
+            jam_mulai: SLOTS[s].mulai,
+            jam_selesai: SLOTS[s].selesai,
+          }
+        });
+        createdJadwals.push(jadwal);
+      }
     }
   }
-  console.log(`✅ ${createdPengampuMapels.length} Data Pengampu Mapel (Jadwal) berhasil dibuat`);
+  console.log(`✅ ${createdPengampuMapels.length} Data Pengampu Mapel & ${createdJadwals.length} Jadwal Pelajaran (Mix Jam 8-15) berhasil dibuat`);
 
   // ============================================================================
   // 7. SEEDING NILAI (5 Tugas, 1 UTS, 1 UAS untuk setiap siswa x mapel)
@@ -227,6 +260,55 @@ async function main() {
     });
   }
   console.log(`✅ ${nilaiToInsert.length} Record Nilai berhasil dibuat (5 Tugas, 1 UTS, 1 UAS per Siswa/Mapel)`);
+
+  // ============================================================================
+  // 8. SEEDING PRESENSI (5 Pertemuan)
+  // ============================================================================
+  console.log('⏳ Generating presensi...');
+  const presensiToInsert = [];
+  const statusPresensi = ['HADIR', 'SAKIT', 'IZIN', 'ALPA'];
+
+  for (const jadwal of createdJadwals) {
+    // Cari pengampu mapel
+    const pengampu = createdPengampuMapels.find(p => p.id === jadwal.pengampu_mapel_id);
+    if (!pengampu) continue;
+    
+    // Cari anggota rombel
+    const anggotaList = createdAnggotaRombels.filter(a => a.rombel_id === pengampu.rombel_id);
+
+    // Bikin 5 pertemuan untuk setiap jadwal
+    for (let pertemuan = 1; pertemuan <= 5; pertemuan++) {
+      // Tanggal fiktif
+      const tgl = new Date();
+      tgl.setDate(tgl.getDate() - (5 - pertemuan) * 7); // mundur per minggu
+
+      for (const anggota of anggotaList) {
+        // Acak status presensi (Lebih banyak HADIR)
+        const rand = Math.random();
+        let status: StatusPresensi = StatusPresensi.HADIR;
+        if (rand > 0.8) status = StatusPresensi.SAKIT;
+        else if (rand > 0.9) status = StatusPresensi.IZIN;
+        else if (rand > 0.95) status = StatusPresensi.ALPA;
+
+        presensiToInsert.push({
+          anggota_rombel_id: anggota.id,
+          jadwal_id: jadwal.id,
+          tanggal: tgl,
+          status: status,
+        });
+      }
+    }
+  }
+
+  // Insert bulk presensi
+  for (let i = 0; i < presensiToInsert.length; i += chunkSize) {
+    const chunk = presensiToInsert.slice(i, i + chunkSize);
+    await prisma.presensi.createMany({
+      data: chunk,
+      skipDuplicates: true,
+    });
+  }
+  console.log(`✅ ${presensiToInsert.length} Record Presensi berhasil dibuat (5 Pertemuan per Jadwal/Siswa)`);
 
   console.log('🎉 Seeding Selesai!');
 }

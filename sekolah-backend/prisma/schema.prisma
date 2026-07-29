@@ -24,6 +24,16 @@ enum Semester {
   GENAP
 }
 
+enum Hari {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  MINGGU
+}
+
 enum StatusPresensi {
   HADIR
   SAKIT
@@ -133,21 +143,36 @@ model PengampuMapel {
   mapel  Mapel  @relation(fields: [mapel_id], references: [id])
   rombel Rombel @relation(fields: [rombel_id], references: [id])
 
-  nilai Nilai[]
+  nilai    Nilai[]
+  jadwal   JadwalPelajaran[]
 
   @@unique([mapel_id, rombel_id]) // 1 Mapel di 1 Kelas hanya diampu 1 Guru
+}
+
+// ================= MODUL JADWAL =================
+model JadwalPelajaran {
+  id                 Int           @id @default(autoincrement())
+  pengampu_mapel_id  Int
+  hari               Hari
+  jam_mulai          String        @db.VarChar(5) // e.g. "07:30"
+  jam_selesai        String        @db.VarChar(5) // e.g. "09:00"
+
+  pengampu_mapel     PengampuMapel @relation(fields: [pengampu_mapel_id], references: [id], onDelete: Cascade)
+  presensi           Presensi[]
 }
 
 // ================= MODUL TRANSAKSIONAL =================
 model Presensi {
   id                Int            @id @default(autoincrement())
   anggota_rombel_id Int
+  jadwal_id         Int
   tanggal           DateTime       @db.Date
   status            StatusPresensi
 
-  anggota_rombel AnggotaRombel @relation(fields: [anggota_rombel_id], references: [id])
+  anggota_rombel AnggotaRombel   @relation(fields: [anggota_rombel_id], references: [id], onDelete: Cascade)
+  jadwal         JadwalPelajaran @relation(fields: [jadwal_id], references: [id], onDelete: Cascade)
 
-  @@unique([anggota_rombel_id, tanggal]) // 1 Siswa hanya diabsen 1x per hari
+  @@unique([anggota_rombel_id, jadwal_id, tanggal]) // 1 Siswa hanya diabsen 1x per mapel per hari
 }
 
 model Nilai {
@@ -161,5 +186,5 @@ model Nilai {
   anggota_rombel AnggotaRombel @relation(fields: [anggota_rombel_id], references: [id])
   pengampu_mapel PengampuMapel @relation(fields: [pengampu_mapel_id], references: [id])
 
-  @@unique([anggota_rombel_id, pengampu_mapel_id, jenis_nilai, urutan])
+  @@unique([anggota_rombel_id, pengampu_mapel_id, jenis_nilai, urutan], name: "anggota_rombel_id_pengampu_mapel_id_jenis_nilai_urutan")
 }
