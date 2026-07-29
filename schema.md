@@ -1,0 +1,170 @@
+# Definisi Skema Database (Prisma)
+
+AI WAJIB menggunakan struktur relasi di bawah ini sebagai acuan mutlak dalam pembuatan database PostgreSQL. Dilarang menambahkan tabel atau kolom di luar spesifikasi MVP ini tanpa instruksi eksplisit.
+
+## Struktur `prisma/schema.prisma`
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================= ENUMS =================
+enum Role {
+  SUPERADMIN
+  ADMIN_TU
+  GURU
+}
+
+enum JenisKelamin {
+  L
+  P
+}
+
+enum Semester {
+  GANJIL
+  GENAP
+}
+
+enum StatusPresensi {
+  HADIR
+  SAKIT
+  IZIN
+  ALPA
+}
+
+enum JenisNilai {
+  TUGAS
+  UTS
+  UAS
+}
+
+// ================= MODUL AUTH =================
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guru      Guru?    // Relasi 1-to-1 opsional
+  siswa     Siswa?   // Relasi 1-to-1 opsional
+}
+
+// ================= MODUL MASTER DATA =================
+model Guru {
+  id           Int      @id @default(autoincrement())
+  user_id      Int?     @unique
+  nip          String?  @unique
+  nama_lengkap String
+  no_hp        String?
+  
+  user         User?    @relation(fields: [user_id], references: [id])
+  wali_kelas   Rombel[] // Guru bisa jadi wali di banyak rombel (beda tahun)
+  mengajar     PengampuMapel[]
+}
+
+model Siswa {
+  id            Int          @id @default(autoincrement())
+  user_id       Int?         @unique
+  nis           String       @unique
+  nisn          String       @unique
+  nama_lengkap  String
+  jenis_kelamin JenisKelamin
+  
+  user          User?        @relation(fields: [user_id], references: [id])
+  rombel_history AnggotaRombel[] // Histori siswa masuk kelas mana saja
+}
+
+model Mapel {
+  id         Int      @id @default(autoincrement())
+  kode_mapel String   @unique
+  nama_mapel String
+  
+  diampu     PengampuMapel[]
+}
+
+// ================= MODUL AKADEMIK (CORE RELATIONS) =================
+model TahunAjaran {
+  id        Int      @id @default(autoincrement())
+  nama      String   // contoh: "2026/2027"
+  semester  Semester
+  is_active Boolean  @default(false)
+
+  rombel    Rombel[]
+}
+
+model Rombel {
+  id              Int      @id @default(autoincrement())
+  tahun_ajaran_id Int
+  wali_kelas_id   Int
+  tingkat         Int      // contoh: 10, 11, 12
+  nama_kelas      String   // contoh: "10 IPA 1"
+
+  tahun_ajaran    TahunAjaran @relation(fields: [tahun_ajaran_id], references: [id])
+  wali_kelas      Guru        @relation(fields: [wali_kelas_id], references: [id])
+  
+  anggota_kelas   AnggotaRombel[]
+  mapel_diajarkan PengampuMapel[]
+}
+
+// Pivot Table: Siswa di dalam Kelas
+model AnggotaRombel {
+  id        Int      @id @default(autoincrement())
+  rombel_id Int
+  siswa_id  Int
+
+  rombel    Rombel   @relation(fields: [rombel_id], references: [id])
+  siswa     Siswa    @relation(fields: [siswa_id], references: [id])
+
+  presensi  Presensi[]
+  nilai     Nilai[]
+
+  @@unique([rombel_id, siswa_id]) // 1 Siswa tidak bisa didaftarkan 2x di kelas yang sama
+}
+
+// Pivot Table: Guru mengajar Mapel apa di Kelas mana
+model PengampuMapel {
+  id        Int      @id @default(autoincrement())
+  guru_id   Int
+  mapel_id  Int
+  rombel_id Int
+
+  guru      Guru     @relation(fields: [guru_id], references: [id])
+  mapel     Mapel    @relation(fields: [mapel_id], references: [id])
+  rombel    Rombel   @relation(fields: [rombel_id], references: [id])
+
+  nilai     Nilai[]
+
+  @@unique([mapel_id, rombel_id]) // 1 Mapel di 1 Kelas hanya diampu 1 Guru
+}
+
+// ================= MODUL TRANSAKSIONAL =================
+model Presensi {
+  id                Int            @id @default(autoincrement())
+  anggota_rombel_id Int
+  tanggal           DateTime       @db.Date
+  status            StatusPresensi
+
+  anggota_rombel    AnggotaRombel  @relation(fields: [anggota_rombel_id], references: [id])
+
+  @@unique([anggota_rombel_id, tanggal]) // 1 Siswa hanya diabsen 1x per hari
+}
+
+model Nilai {
+  id                Int           @id @default(autoincrement())
+  anggota_rombel_id Int
+  pengampu_mapel_id Int
+  jenis_nilai       JenisNilai
+  skor              Float
+
+  anggota_rombel    AnggotaRombel @relation(fields: [anggota_rombel_id], references: [id])
+  pengampu_mapel    PengampuMapel @relation(fields: [pengampu_mapel_id], references: [id])
+}
+```
