@@ -20,6 +20,7 @@ Proyek ini dibangun menggunakan arsitektur pemisahan *Client-Server* dengan tekn
    - **Jadwal Pelajaran:** Alokasi mapel dan guru ke dalam rombel.
    - **Kehadiran (Absensi):** Pencatatan presensi siswa oleh guru.
    - **Penilaian:** Pencatatan nilai tugas, UTS, dan UAS siswa.
+   - **Raport:** Akumulasi perhitungan nilai akhir, pembobotan (Tugas, UTS, UAS), dan cetak raport PDF.
 
 ---
 
@@ -96,8 +97,8 @@ npm install
 # Jalankan migrasi database untuk membuat tabel
 npx prisma migrate dev --name init
 
-# Lakukan seeding untuk membuat akun superadmin dan data awal
-npx prisma db seed
+# Lakukan seeding untuk membuat akun superadmin, guru, siswa, serta data akademik awal (jadwal, nilai, presensi)
+npm run seed
 
 # Jalankan server backend (development mode)
 npm run dev
@@ -138,13 +139,17 @@ npx prisma studio
 
 ## 🔐 Kredensial Akses Default
 
-Setelah Anda menjalankan perintah `npx prisma db seed`, sistem akan otomatis membuat satu akun `SUPERADMIN` yang dapat Anda gunakan untuk login pertama kali.
+Setelah Anda menjalankan perintah `npm run seed` (atau `npx prisma db seed`), sistem akan otomatis membuat beberapa akun yang dapat Anda gunakan untuk login.
 
-- **Role:** Superadmin
+### 1. Superadmin
+Digunakan untuk mengelola semua data Master dan konfigurasi sistem.
 - **Username:** `superadmin`
 - **Password:** `admin123`
 
-Gunakan akun ini untuk masuk ke dalam aplikasi dan mulai mengelola data Guru, Siswa, dan pengaturan lainnya.
+### 2. Guru
+Terdapat 5 akun guru yang otomatis dibuat beserta datanya (Guru MTK, Bahasa Indonesia, Bahasa Inggris, IPA, IPS). Gunakan akun ini untuk mencoba fitur akademik (Jadwal, Presensi, Nilai, Raport).
+- **Username:** `guru_mtk`, `guru_bin`, `guru_big`, `guru_ipa`, `guru_ips`
+- **Password:** `guru123`
 
 ---
 
