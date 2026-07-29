@@ -49,6 +49,7 @@ const inputNilaiSchema = z.object({
     anggota_rombel_id: z.number().int().positive(),
     pengampu_mapel_id: z.number().int().positive(),
     jenis_nilai: z.enum(['TUGAS', 'UTS', 'UAS']),
+    urutan: z.number().int().positive(),
     skor: z.number().min(0).max(100),
   })).min(1),
 });

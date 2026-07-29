@@ -31,6 +31,7 @@ const guruMenus = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/presensi', label: 'Presensi', icon: ClipboardList },
   { to: '/nilai', label: 'Input Nilai', icon: FileText },
+  { to: '/raport', label: 'Cetak Raport', icon: FileText },
 ];
 
 export default function Sidebar({ open, onClose }: SidebarProps) {

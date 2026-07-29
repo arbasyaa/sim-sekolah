@@ -155,8 +155,11 @@ model Nilai {
   anggota_rombel_id Int
   pengampu_mapel_id Int
   jenis_nilai       JenisNilai
+  urutan            Int        @default(1) // Untuk multi-tugas (1, 2, 3, ...), UTS/UAS default 1
   skor              Float
 
   anggota_rombel AnggotaRombel @relation(fields: [anggota_rombel_id], references: [id])
   pengampu_mapel PengampuMapel @relation(fields: [pengampu_mapel_id], references: [id])
+
+  @@unique([anggota_rombel_id, pengampu_mapel_id, jenis_nilai, urutan])
 }

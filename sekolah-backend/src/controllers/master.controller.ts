@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { masterService } from '../services/master.service';
 import { sendSuccess } from '../utils/response';
 import { asyncWrapper } from '../utils/asyncWrapper';
+import { AppError } from '../utils/appError';
 
 // ================= ZOD SCHEMAS =================
 const idParamSchema = z.object({
@@ -161,5 +162,44 @@ export const masterController = {
     const { id } = idParamSchema.parse(req.params);
     const data = await masterService.setTahunAjaranAktif(id);
     sendSuccess(res, 'Tahun ajaran berhasil diaktifkan.', data);
+  }),
+
+  // ===================== IMPORT EXCEL =====================
+  importGuru: asyncWrapper(async (req: Request, res: Response) => {
+    const file = (req as any).file;
+    if (!file) {
+      throw new AppError(400, 'File Excel tidak ditemukan');
+    }
+
+    const xlsx = require('xlsx');
+    const workbook = xlsx.read(file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    if (!data || data.length === 0) {
+      throw new AppError(400, 'File Excel kosong atau format tidak valid');
+    }
+
+    const result = await masterService.importGuru(data);
+    sendSuccess(res, 'Proses import selesai', result);
+  }),
+
+  importSiswa: asyncWrapper(async (req: Request, res: Response) => {
+    const file = (req as any).file;
+    if (!file) {
+      throw new AppError(400, 'File Excel tidak ditemukan');
+    }
+
+    const xlsx = require('xlsx');
+    const workbook = xlsx.read(file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    if (!data || data.length === 0) {
+      throw new AppError(400, 'File Excel kosong atau format tidak valid');
+    }
+
+    const result = await masterService.importSiswa(data);
+    sendSuccess(res, 'Proses import selesai', result);
   }),
 };

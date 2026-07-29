@@ -16,3 +16,18 @@ body {
   background-color: #f1f5f9;
   color: #1e293b;
 }
+
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+  .print-show {
+    display: block !important;
+  }
+  body {
+    background-color: white !important;
+  }
+  @page {
+    margin: 0;
+  }
+}

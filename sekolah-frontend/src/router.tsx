@@ -7,6 +7,9 @@ import SiswaPage from '@/pages/master/SiswaPage';
 import MapelPage from '@/pages/master/MapelPage';
 import TahunAjaranPage from '@/pages/master/TahunAjaranPage';
 import RombelPage from '@/pages/master/RombelPage';
+import PresensiPage from '@/pages/akademik/PresensiPage';
+import NilaiPage from '@/pages/akademik/NilaiPage';
+import RaportPage from '@/pages/akademik/RaportPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -21,6 +24,10 @@ export const router = createBrowserRouter([
       { path: 'mapel', element: <MapelPage /> },
       { path: 'tahun-ajaran', element: <TahunAjaranPage /> },
       { path: 'rombel', element: <RombelPage /> },
+      
+      { path: 'presensi', element: <PresensiPage /> },
+      { path: 'nilai', element: <NilaiPage /> },
+      { path: 'raport', element: <RaportPage /> },
     ],
   },
 ]);

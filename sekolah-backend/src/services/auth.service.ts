@@ -12,6 +12,7 @@ interface LoginResult {
     id: number;
     username: string;
     role: Role;
+    guru_id?: number | null;
   };
 }
 
@@ -22,6 +23,9 @@ export const authService = {
   async login(username: string, password: string): Promise<LoginResult> {
     const user = await prisma.user.findUnique({
       where: { username },
+      include: {
+        guru: true
+      }
     });
 
     if (!user) {
@@ -50,6 +54,7 @@ export const authService = {
         id: user.id,
         username: user.username,
         role: user.role,
+        guru_id: user.guru?.id,
       },
     };
   },

@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useSiswa, useCreateSiswa, useUpdateSiswa, useDeleteSiswa } from '@/hooks/useMasterData';
+import { useState, useRef } from 'react';
+import { useSiswa, useCreateSiswa, useUpdateSiswa, useDeleteSiswa, useImportSiswa } from '@/hooks/useMasterData';
 import type { Siswa, JenisKelamin } from '@/types';
-import { Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Upload } from 'lucide-react';
 
 interface FormData {
   nis: string;
@@ -17,6 +17,9 @@ export default function SiswaPage() {
   const createSiswa = useCreateSiswa();
   const updateSiswa = useUpdateSiswa();
   const deleteSiswa = useDeleteSiswa();
+  const importSiswa = useImportSiswa();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -36,15 +39,49 @@ export default function SiswaPage() {
 
   const handleDelete = (id: number) => { if (confirm('Yakin ingin menghapus data siswa ini?')) deleteSiswa.mutate(id); };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const res = await importSiswa.mutateAsync(file);
+      alert(`Import Selesai!\nSukses: ${res.data.success}\nGagal: ${res.data.failed}`);
+      if (res.data.errors?.length > 0) {
+        console.log("Errors:", res.data.errors);
+        alert('Beberapa baris gagal diimport. Cek console untuk detailnya.');
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Gagal import Excel');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const jkLabel = (jk: JenisKelamin) => jk === 'LAKI_LAKI' ? 'Laki-laki' : 'Perempuan';
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-800">Data Siswa</h2>
-        <button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark">
-          <Plus className="h-4 w-4" /> Tambah Siswa
-        </button>
+        <div className="flex gap-2">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleImport}
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            disabled={importSiswa.isPending}
+            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Upload className="h-4 w-4" /> {importSiswa.isPending ? 'Mengimpor...' : 'Import Excel'}
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark">
+            <Plus className="h-4 w-4" /> Tambah Siswa
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

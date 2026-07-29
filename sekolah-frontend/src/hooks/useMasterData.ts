@@ -13,6 +13,23 @@ export function useGuru() {
   });
 }
 
+export function useImportGuru() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post('/master/guru/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['guru'] });
+    },
+  });
+}
+
 export function useCreateGuru() {
   const qc = useQueryClient();
   return useMutation({
@@ -58,6 +75,23 @@ export function useSiswa() {
     queryFn: async () => {
       const { data } = await api.get<ApiResponse<Siswa[]>>('/master/siswa');
       return data.data;
+    },
+  });
+}
+
+export function useImportSiswa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post('/master/siswa/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['siswa'] });
     },
   });
 }

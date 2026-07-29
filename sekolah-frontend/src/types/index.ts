@@ -27,6 +27,7 @@ export interface UserData {
   id: number;
   username: string;
   role: Role;
+  guru_id?: number | null;
 }
 
 // ===================== MASTER DATA =====================
@@ -68,7 +69,7 @@ export interface Rombel {
   nama_kelas: string;
   tahun_ajaran?: TahunAjaran;
   wali_kelas?: Guru;
-  anggota?: AnggotaRombel[];
+  anggota_kelas?: AnggotaRombel[];
 }
 
 export interface AnggotaRombel {
@@ -101,6 +102,7 @@ export interface Nilai {
   anggota_rombel_id: number;
   pengampu_mapel_id: number;
   jenis_nilai: JenisNilai;
+  urutan: number;
   skor: number;
   anggota_rombel?: AnggotaRombel;
   pengampu_mapel?: PengampuMapel;

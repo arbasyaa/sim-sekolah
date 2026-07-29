@@ -243,4 +243,86 @@ export const masterService = {
       data: { is_active: true },
     });
   },
+
+  // ===================== IMPORT EXCEL =====================
+  async importGuru(data: any[]) {
+    const results = { success: 0, failed: 0, errors: [] as string[] };
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      try {
+        if (!row.nip || !row.nama_lengkap) {
+          throw new Error('NIP dan Nama Lengkap harus diisi');
+        }
+
+        // Cek NIP duplikat
+        const existingGuru = await prisma.guru.findUnique({
+          where: { nip: String(row.nip) }
+        });
+
+        if (existingGuru) {
+          throw new Error(`Guru dengan NIP ${row.nip} sudah ada`);
+        }
+
+        await prisma.guru.create({
+          data: {
+            nip: String(row.nip),
+            nama_lengkap: row.nama_lengkap,
+            no_hp: row.no_hp ? String(row.no_hp) : null,
+          }
+        });
+        results.success++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(`Baris ${i + 2}: ${error.message}`);
+      }
+    }
+    return results;
+  },
+
+  async importSiswa(data: any[]) {
+    const results = { success: 0, failed: 0, errors: [] as string[] };
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      try {
+        if (!row.nis || !row.nisn || !row.nama_lengkap || !row.jenis_kelamin) {
+          throw new Error('NIS, NISN, Nama Lengkap, dan Jenis Kelamin harus diisi');
+        }
+
+        const jk = row.jenis_kelamin.toUpperCase();
+        if (jk !== 'L' && jk !== 'P') {
+          throw new Error('Jenis kelamin harus L atau P');
+        }
+
+        // Cek NIS/NISN duplikat
+        const existingSiswa = await prisma.siswa.findFirst({
+          where: {
+            OR: [
+              { nis: String(row.nis) },
+              { nisn: String(row.nisn) }
+            ]
+          }
+        });
+
+        if (existingSiswa) {
+          throw new Error(`Siswa dengan NIS ${row.nis} atau NISN ${row.nisn} sudah ada`);
+        }
+
+        await prisma.siswa.create({
+          data: {
+            nis: String(row.nis),
+            nisn: String(row.nisn),
+            nama_lengkap: row.nama_lengkap,
+            jenis_kelamin: jk as JenisKelamin,
+          }
+        });
+        results.success++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(`Baris ${i + 2}: ${error.message}`);
+      }
+    }
+    return results;
+  },
 };

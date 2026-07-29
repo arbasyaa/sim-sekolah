@@ -1,0 +1,9 @@
+🌱 Seeding database...
+✅ User superadmin: superadmin
+✅ Tahun ajaran: 2025/2026 - GANJIL
+✅ 5 mapel berhasil diseed
+✅ User Guru dibuat: guru1, guru2 (Password: guru123)
+✅ 2 Rombel dibuat: X-A, X-B
+✅ 5 Siswa berhasil ditambahkan ke Rombel
+✅ Presensi & Nilai MTK di X-A berhasil ditambahkan
+🎉 Seeding selesai!

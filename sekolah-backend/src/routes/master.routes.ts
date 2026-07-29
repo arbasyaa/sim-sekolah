@@ -1,11 +1,17 @@
 import { Router } from 'express';
 import { masterController } from '../controllers/master.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
+import multer from 'multer';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Semua route master memerlukan autentikasi
 router.use(authenticate);
+
+// ===================== IMPORT =====================
+router.post('/guru/import', authorize('SUPERADMIN', 'ADMIN_TU'), upload.single('file'), masterController.importGuru);
+router.post('/siswa/import', authorize('SUPERADMIN', 'ADMIN_TU'), upload.single('file'), masterController.importSiswa);
 
 // ===================== GURU =====================
 router.get('/guru', masterController.getAllGuru);
